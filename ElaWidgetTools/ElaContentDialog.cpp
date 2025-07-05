@@ -37,7 +37,7 @@ ElaContentDialog::ElaContentDialog(QWidget* parent)
 #else
     window()->setWindowFlags((window()->windowFlags()) | Qt::FramelessWindowHint);
 #endif
-    d->_leftButton = new ElaPushButton("cancel", this);
+    d->_leftButton = new ElaPushButton("取消", this);
     connect(d->_leftButton, &ElaPushButton::clicked, this, [=]() {
         Q_EMIT leftButtonClicked();
         onLeftButtonClicked();
@@ -47,7 +47,7 @@ ElaContentDialog::ElaContentDialog(QWidget* parent)
     d->_leftButton->setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
     d->_leftButton->setFixedHeight(38);
     d->_leftButton->setBorderRadius(6);
-    d->_middleButton = new ElaPushButton("minimum", this);
+    d->_middleButton = new ElaPushButton("最小化", this);
     connect(d->_middleButton, &ElaPushButton::clicked, this, [=]() {
         Q_EMIT middleButtonClicked();
         onMiddleButtonClicked();
@@ -56,7 +56,7 @@ ElaContentDialog::ElaContentDialog(QWidget* parent)
     d->_middleButton->setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX));
     d->_middleButton->setFixedHeight(38);
     d->_middleButton->setBorderRadius(6);
-    d->_rightButton = new ElaPushButton("exit", this);
+    d->_rightButton = new ElaPushButton("退出", this);
     connect(d->_rightButton, &ElaPushButton::clicked, this, [=]() {
         Q_EMIT rightButtonClicked();
         onRightButtonClicked();
