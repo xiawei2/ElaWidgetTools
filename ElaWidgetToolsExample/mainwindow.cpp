@@ -24,8 +24,11 @@
 #include "T_Setting.h"
 #include "T_TableView.h"
 #include "T_TreeView.h"
+#include <QMouseEvent>
 #ifdef Q_OS_WIN
+#include "ElaApplication.h"
 #include "ExamplePage/T_ElaScreen.h"
+#include <QTimer>
 #endif
 
 #include "ExamplePage/T_Home.h"
@@ -60,6 +63,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     //移动到中心
     moveToCenter();
+
+    //  如果你的windows版本低于Win11 调用原生Mica、Mica-Alt、Acrylic 会导致窗口绘制失效  Dwm_Blur仍可使用
+    //    eTheme->setThemeMode(ElaThemeType::Dark);
+    //    QTimer::singleShot(1, this, [=]() {
+    //        eApp->setWindowDisplayMode(ElaApplicationType::Mica);
+    //    });
 }
 
 MainWindow::~MainWindow()
@@ -69,7 +78,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::initWindow()
 {
-    // setIsEnableMica(true);
     // setIsCentralStackedWidgetTransparent(true);
     setWindowIcon(QIcon(":/include/Image/Cirno.jpg"));
     resize(1200, 740);
@@ -84,6 +92,13 @@ void MainWindow::initWindow()
     setWindowTitle("ElaWidgetTool");
     // setIsStayTop(true);
     // setUserInfoCardVisible(false);
+    // setNavigationBarWidth(260);
+    ElaText* centralStack = new ElaText("这是一个主窗口堆栈页面", this);
+    QFont font = centralStack->font();
+    font.setPixelSize(32);
+    centralStack->setFont(font);
+    centralStack->setAlignment(Qt::AlignCenter);
+    addCentralWidget(centralStack);
 }
 
 void MainWindow::initEdgeLayout()
@@ -291,4 +306,29 @@ void MainWindow::initContent()
         this->navigation(_cardPage->property("ElaPageKey").toString());
     });
     qDebug() << "已注册的事件列表" << ElaEventBus::getInstance()->getRegisteredEventsName();
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (getCurrentNavigationIndex() != 2)
+    {
+        switch (event->button())
+        {
+        case Qt::BackButton:
+        {
+            this->setCurrentStackIndex(0);
+            break;
+        }
+        case Qt::ForwardButton:
+        {
+            this->setCurrentStackIndex(1);
+            break;
+        }
+        default:
+        {
+            break;
+        }
+        }
+    }
+    ElaWindow::mouseReleaseEvent(event);
 }

@@ -21,7 +21,7 @@ class ElaWindowPrivate : public QObject
     Q_D_CREATE(ElaWindow)
     Q_PROPERTY_CREATE_D(int, ThemeChangeTime)
     Q_PROPERTY_CREATE_D(ElaNavigationType::NavigationDisplayMode, NavigationBarDisplayMode)
-
+    Q_PROPERTY_CREATE_D(ElaWindowType::StackSwitchMode, StackSwitchMode)
 public:
     explicit ElaWindowPrivate(QObject* parent = nullptr);
     ~ElaWindowPrivate() override;
@@ -30,9 +30,10 @@ public:
     Q_SLOT void onThemeReadyChange();
     Q_SLOT void onDisplayModeChanged();
     Q_SLOT void onThemeModeChanged(ElaThemeType::ThemeMode themeMode);
-    Q_SLOT void onNavigationNodeClicked(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey);
+    Q_SLOT void onNavigationNodeClicked(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey, bool isRouteBack);
     Q_SLOT void onNavigationNodeAdded(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey, QWidget* page);
     Q_SLOT void onNavigationNodeRemoved(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey);
+    Q_INVOKABLE void onNavigationRouteBack(QVariantMap routeData);
 
 private:
     ElaThemeType::ThemeMode _themeMode;
@@ -44,6 +45,7 @@ private:
     ElaEvent* _focusEvent{nullptr};
     ElaNavigationBar* _navigationBar{nullptr};
     ElaCentralStackedWidget* _centerStackedWidget{nullptr};
+    ElaCentralStackedWidget* _navigationCenterStackedWidget{nullptr};
     ElaAppBar* _appBar{nullptr};
     QHBoxLayout* _centerLayout{nullptr};
     int _contentsMargins{5};
@@ -56,6 +58,7 @@ private:
     ElaNavigationType::NavigationDisplayMode _currentNavigationBarDisplayMode{ElaNavigationType::Maximal};
 
     QMap<QString, QWidget*> _routeMap; // key__nodeKey title可以一致  value__Page
+    int _centralStackTargetIndex{0};
     int _navigationTargetIndex{0};
     qreal _distance(QPoint point1, QPoint point2);
     void _resetWindowLayout(bool isAnimation);

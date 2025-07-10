@@ -31,12 +31,12 @@ void ElaLCDNumberStyle::drawControl(QStyle::ControlElement element, const QStyle
                 QRect numberRect = option->rect;
                 painter->save();
                 painter->setRenderHints(QPainter::Antialiasing);
-                painter->setPen(Qt::NoPen);
                 // 边框绘制
-                painter->setBrush(ElaThemeColor(_themeMode, BasicBorder));
-                painter->drawRoundedRect(numberRect, 6, 6);
-
-                painter->setBrush(ElaThemeColor(_themeMode, BasicBase));
+                painter->setPen(ElaThemeColor(_themeMode, BasicBorder));
+                painter->setBrush(Qt::NoBrush);
+                painter->drawRoundedRect(numberRect.adjusted(1, 1, -1, -1), 6, 6);
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(ElaThemeColor(_themeMode, BasicBaseAlpha));
                 painter->drawRoundedRect(QRectF(numberRect.x() + 1.5, numberRect.y() + 1.5, numberRect.width() - 3, numberRect.height() - 3), 6, 6);
                 painter->restore();
             }

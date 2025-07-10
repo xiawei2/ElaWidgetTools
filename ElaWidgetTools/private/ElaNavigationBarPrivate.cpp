@@ -53,11 +53,16 @@ void ElaNavigationBarPrivate::onNavigationOpenNewWindow(QString nodeKey)
     QWidget* widget = static_cast<QWidget*>(meta->newInstance());
     if (widget)
     {
+        _pageNewWindowCountMap[nodeKey] += 1;
         ElaCustomWidget* floatWidget = new ElaCustomWidget(q);
+        connect(floatWidget, &ElaCustomWidget::customWidgetClosed, this, [=]() {
+            _pageNewWindowCountMap[nodeKey] -= 1;
+        });
         floatWidget->setWindowIcon(widget->windowIcon());
         floatWidget->setWindowTitle(widget->windowTitle());
         floatWidget->setCentralWidget(widget);
         floatWidget->show();
+        Q_EMIT q->pageOpenInNewWindow(nodeKey);
     }
 }
 
@@ -65,10 +70,10 @@ void ElaNavigationBarPrivate::onNavigationRouteBack(QVariantMap routeData)
 {
     Q_Q(ElaNavigationBar);
     QString pageKey = routeData.value("ElaPageKey").toString();
-    q->navigation(pageKey, false);
+    q->navigation(pageKey, false, true);
 }
 
-void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool isLogRoute)
+void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool isLogRoute, bool isRouteBack)
 {
     Q_Q(ElaNavigationBar);
     if (index.isValid())
@@ -111,7 +116,7 @@ void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool i
                     routeData.insert("ElaPageKey", pageKey);
                     ElaNavigationRouter::getInstance()->navigationRoute(this, "onNavigationRouteBack", routeData);
                 }
-                Q_EMIT q->navigationNodeClicked(ElaNavigationType::PageNode, node->getNodeKey());
+                Q_EMIT q->navigationNodeClicked(ElaNavigationType::PageNode, node->getNodeKey(), isRouteBack);
 
                 if (_footerModel->getSelectedNode())
                 {
@@ -168,7 +173,7 @@ void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool i
     }
 }
 
-void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool isLogRoute)
+void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool isLogRoute, bool isRouteBack)
 {
     Q_Q(ElaNavigationBar);
     ElaNavigationNode* node = index.data(Qt::UserRole).value<ElaNavigationNode*>();
@@ -200,7 +205,7 @@ void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool
             routeData.insert("ElaPageKey", pageKey);
             ElaNavigationRouter::getInstance()->navigationRoute(this, "onNavigationRouteBack", routeData);
         }
-        Q_EMIT q->navigationNodeClicked(ElaNavigationType::FooterNode, node->getNodeKey());
+        Q_EMIT q->navigationNodeClicked(ElaNavigationType::FooterNode, node->getNodeKey(), isRouteBack);
 
         if (node->getIsHasFooterPage())
         {
@@ -466,10 +471,10 @@ void ElaNavigationBarPrivate::_handleNavigationExpandState(bool isSave)
     }
     else
     {
+        // 修正动画覆盖
+        _navigationView->resize(_pNavigationBarWidth - 5, _navigationView->height());
         for (auto node: _lastExpandedNodesList)
         {
-            // 修正动画覆盖
-            _navigationView->resize(295, _navigationView->height());
             onTreeViewClicked(node->getModelIndex(), false);
         }
     }
@@ -577,7 +582,7 @@ void ElaNavigationBarPrivate::_doNavigationBarWidthAnimation(ElaNavigationType::
         connect(navigationBarWidthAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
             q->setFixedWidth(value.toUInt());
         });
-        navigationBarWidthAnimation->setEndValue(300);
+        navigationBarWidthAnimation->setEndValue(_pNavigationBarWidth);
         break;
     }
     default:

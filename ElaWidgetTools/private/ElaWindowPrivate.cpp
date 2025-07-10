@@ -30,7 +30,7 @@ void ElaWindowPrivate::onNavigationButtonClicked()
         _navigationBar->setIsTransparent(false);
         _navigationBar->setDisplayMode(ElaNavigationType::Maximal, false);
         _navigationBar->move(-_navigationBar->width(), _navigationBar->pos().y());
-        _navigationBar->resize(_navigationBar->width(), _centerStackedWidget->height() + 1);
+        _navigationBar->resize(_navigationBar->width(), _navigationCenterStackedWidget->height() + 1);
         QPropertyAnimation* navigationMoveAnimation = new QPropertyAnimation(_navigationBar, "pos");
         connect(navigationMoveAnimation, &QPropertyAnimation::finished, this, [=]() {
             _isNavigationBarExpanded = true;
@@ -86,17 +86,47 @@ void ElaWindowPrivate::onThemeReadyChange()
 {
     Q_Q(ElaWindow);
     // 主题变更绘制窗口
-    _appBar->setIsOnlyAllowMinAndClose(true);
-    if (!_animationWidget)
+    switch (eApp->getWindowDisplayMode())
     {
-        QPoint centerPos = q->mapFromGlobal(QCursor::pos());
-        _animationWidget = new ElaThemeAnimationWidget(q);
-        connect(_animationWidget, &ElaThemeAnimationWidget::animationFinished, this, [=]() {
-            _appBar->setIsOnlyAllowMinAndClose(false);
-            _animationWidget = nullptr;
-        });
-        _animationWidget->move(0, 0);
-        _animationWidget->setOldWindowBackground(q->grab(q->rect()).toImage());
+    case ElaApplicationType::Normal:
+    case ElaApplicationType::ElaMica:
+    {
+        _appBar->setIsOnlyAllowMinAndClose(true);
+        if (!_animationWidget)
+        {
+            QPoint centerPos = q->mapFromGlobal(QCursor::pos());
+            _animationWidget = new ElaThemeAnimationWidget(q);
+            connect(_animationWidget, &ElaThemeAnimationWidget::animationFinished, this, [=]() {
+                _appBar->setIsOnlyAllowMinAndClose(false);
+                _animationWidget = nullptr;
+            });
+            _animationWidget->move(0, 0);
+            _animationWidget->setOldWindowBackground(q->grab(q->rect()).toImage());
+            if (eTheme->getThemeMode() == ElaThemeType::Light)
+            {
+                eTheme->setThemeMode(ElaThemeType::Dark);
+            }
+            else
+            {
+                eTheme->setThemeMode(ElaThemeType::Light);
+            }
+            _animationWidget->setNewWindowBackground(q->grab(q->rect()).toImage());
+            _animationWidget->setCenter(centerPos);
+            qreal topLeftDis = _distance(centerPos, QPoint(0, 0));
+            qreal topRightDis = _distance(centerPos, QPoint(q->width(), 0));
+            qreal bottomLeftDis = _distance(centerPos, QPoint(0, q->height()));
+            qreal bottomRightDis = _distance(centerPos, QPoint(q->width(), q->height()));
+            QList<qreal> disList{topLeftDis, topRightDis, bottomLeftDis, bottomRightDis};
+            std::sort(disList.begin(), disList.end());
+            _animationWidget->setEndRadius(disList[3]);
+            _animationWidget->resize(q->width(), q->height());
+            _animationWidget->startAnimation(_pThemeChangeTime);
+            _animationWidget->show();
+        }
+        break;
+    }
+    default:
+    {
         if (eTheme->getThemeMode() == ElaThemeType::Light)
         {
             eTheme->setThemeMode(ElaThemeType::Dark);
@@ -105,18 +135,8 @@ void ElaWindowPrivate::onThemeReadyChange()
         {
             eTheme->setThemeMode(ElaThemeType::Light);
         }
-        _animationWidget->setNewWindowBackground(q->grab(q->rect()).toImage());
-        _animationWidget->setCenter(centerPos);
-        qreal topLeftDis = _distance(centerPos, QPoint(0, 0));
-        qreal topRightDis = _distance(centerPos, QPoint(q->width(), 0));
-        qreal bottomLeftDis = _distance(centerPos, QPoint(0, q->height()));
-        qreal bottomRightDis = _distance(centerPos, QPoint(q->width(), q->height()));
-        QList<qreal> disList{topLeftDis, topRightDis, bottomLeftDis, bottomRightDis};
-        std::sort(disList.begin(), disList.end());
-        _animationWidget->setEndRadius(disList[3]);
-        _animationWidget->resize(q->width(), q->height());
-        _animationWidget->startAnimation(_pThemeChangeTime);
-        _animationWidget->show();
+        break;
+    }
     }
 }
 
@@ -156,15 +176,31 @@ void ElaWindowPrivate::onThemeModeChanged(ElaThemeType::ThemeMode themeMode)
 {
     Q_Q(ElaWindow);
     _themeMode = themeMode;
-    if (!eApp->getIsEnableMica())
+    switch (eApp->getWindowDisplayMode())
+    {
+    case ElaApplicationType::Normal:
     {
         QPalette palette = q->palette();
         palette.setBrush(QPalette::Window, ElaThemeColor(_themeMode, WindowBase));
         q->setPalette(palette);
+        break;
     }
+    case ElaApplicationType::ElaMica:
+    {
+        break;
+    }
+    default:
+    {
+        QPalette palette = q->palette();
+        palette.setBrush(QPalette::Window, Qt::transparent);
+        q->setPalette(palette);
+        break;
+    }
+    }
+    q->update();
 }
 
-void ElaWindowPrivate::onNavigationNodeClicked(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey)
+void ElaWindowPrivate::onNavigationNodeClicked(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey, bool isRouteBack)
 {
     QWidget* page = _routeMap.value(nodeKey);
     if (!page)
@@ -172,24 +208,13 @@ void ElaWindowPrivate::onNavigationNodeClicked(ElaNavigationType::NavigationNode
         // 页脚没有绑定页面
         return;
     }
-    int nodeIndex = _centerStackedWidget->indexOf(page);
-    if (_navigationTargetIndex == nodeIndex || _centerStackedWidget->count() <= nodeIndex)
+    int nodeIndex = _navigationCenterStackedWidget->indexOf(page);
+    if (_navigationTargetIndex == nodeIndex || _navigationCenterStackedWidget->count() <= nodeIndex)
     {
         return;
     }
     _navigationTargetIndex = nodeIndex;
-    QTimer::singleShot(180, this, [=]() {
-        QWidget* currentWidget = _centerStackedWidget->widget(nodeIndex);
-        _centerStackedWidget->setCurrentIndex(nodeIndex);
-        QPropertyAnimation* currentWidgetAnimation = new QPropertyAnimation(currentWidget, "pos");
-        currentWidgetAnimation->setEasingCurve(QEasingCurve::OutCubic);
-        currentWidgetAnimation->setDuration(300);
-        QPoint currentWidgetPos = currentWidget->pos();
-        currentWidgetAnimation->setEndValue(currentWidgetPos);
-        currentWidgetPos.setY(currentWidgetPos.y() + 80);
-        currentWidgetAnimation->setStartValue(currentWidgetPos);
-        currentWidgetAnimation->start(QAbstractAnimation::DeleteWhenStopped);
-    });
+    _navigationCenterStackedWidget->doWindowStackSwitch(_pStackSwitchMode, nodeIndex, isRouteBack);
 }
 
 void ElaWindowPrivate::onNavigationNodeAdded(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey, QWidget* page)
@@ -197,14 +222,14 @@ void ElaWindowPrivate::onNavigationNodeAdded(ElaNavigationType::NavigationNodeTy
     if (nodeType == ElaNavigationType::PageNode)
     {
         _routeMap.insert(nodeKey, page);
-        _centerStackedWidget->addWidget(page);
+        _navigationCenterStackedWidget->addWidget(page);
     }
     else
     {
         _routeMap.insert(nodeKey, page);
         if (page)
         {
-            _centerStackedWidget->addWidget(page);
+            _navigationCenterStackedWidget->addWidget(page);
         }
     }
 }
@@ -218,12 +243,18 @@ void ElaWindowPrivate::onNavigationNodeRemoved(ElaNavigationType::NavigationNode
     }
     QWidget* page = _routeMap.value(nodeKey);
     _routeMap.remove(nodeKey);
-    _centerStackedWidget->removeWidget(page);
-    QWidget* currentWidget = _centerStackedWidget->currentWidget();
+    _navigationCenterStackedWidget->removeWidget(page);
+    QWidget* currentWidget = _navigationCenterStackedWidget->currentWidget();
     if (currentWidget)
     {
         q->navigation(currentWidget->property("ElaPageKey").toString());
     }
+}
+
+void ElaWindowPrivate::onNavigationRouteBack(QVariantMap routeData)
+{
+    int routeIndex = routeData.value("ElaCentralStackIndex").toUInt();
+    _centerStackedWidget->doWindowStackSwitch(_pStackSwitchMode, routeIndex, true);
 }
 
 qreal ElaWindowPrivate::_distance(QPoint point1, QPoint point2)
@@ -247,7 +278,7 @@ void ElaWindowPrivate::_resetWindowLayout(bool isAnimation)
             _navigationBar->setIsTransparent(true);
             _navigationBar->setDisplayMode(ElaNavigationType::Minimal, false);
             _centerLayout->addWidget(_navigationBar);
-            _centerLayout->addWidget(_centerStackedWidget);
+            _centerLayout->addWidget(_navigationCenterStackedWidget);
         }
     }
 }
@@ -266,6 +297,7 @@ void ElaWindowPrivate::_doNavigationDisplayModeChange()
     if (_pNavigationBarDisplayMode == ElaNavigationType::Auto)
     {
         _isNavigationDisplayModeChanged = true;
+        _isWMClickedAnimationFinished = true;
         _resetWindowLayout(false);
         int width = q->centralWidget()->width();
         if (width >= 850 && _currentNavigationBarDisplayMode != ElaNavigationType::Maximal)

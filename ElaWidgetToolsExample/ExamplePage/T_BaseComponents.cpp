@@ -1,14 +1,12 @@
 ﻿#include "T_BaseComponents.h"
 
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-
 #include "ElaCheckBox.h"
 #include "ElaComboBox.h"
 #include "ElaMessageButton.h"
 #include "ElaMultiSelectComboBox.h"
 #include "ElaPlainTextEdit.h"
 #include "ElaProgressBar.h"
+#include "ElaProgressRing.h"
 #include "ElaRadioButton.h"
 #include "ElaScrollPageArea.h"
 #include "ElaSlider.h"
@@ -16,6 +14,11 @@
 #include "ElaText.h"
 #include "ElaToggleButton.h"
 #include "ElaToggleSwitch.h"
+
+#include <QButtonGroup>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
 T_BaseComponents::T_BaseComponents(QWidget* parent)
     : T_BasePage(parent)
 {
@@ -182,6 +185,35 @@ T_BaseComponents::T_BaseComponents(QWidget* parent)
     spinBoxLayout->addWidget(_spinBox);
     spinBoxLayout->addStretch();
 
+    ElaRadioButton* inlineButton = new ElaRadioButton("Inline", this);
+    ElaRadioButton* compactButton = new ElaRadioButton("Compact", this);
+    ElaRadioButton* sideButton = new ElaRadioButton("Side", this);
+    ElaRadioButton* pmSideButton = new ElaRadioButton("PMSide", this);
+    inlineButton->setChecked(true);
+    QHBoxLayout* buttonModeLayout = new QHBoxLayout();
+    ElaText* buttonModeText = new ElaText("按钮模式切换", this);
+    buttonModeText->setWordWrap(false);
+    buttonModeText->setTextPixelSize(15);
+    buttonModeLayout->addWidget(buttonModeText);
+    buttonModeLayout->addWidget(inlineButton);
+    buttonModeLayout->addWidget(compactButton);
+    buttonModeLayout->addWidget(sideButton);
+    buttonModeLayout->addWidget(pmSideButton);
+
+    spinBoxLayout->addLayout(buttonModeLayout);
+
+    QButtonGroup* spinButtonGroup = new QButtonGroup(this);
+    spinButtonGroup->addButton(inlineButton, 0);
+    spinButtonGroup->addButton(compactButton, 1);
+    spinButtonGroup->addButton(sideButton, 2);
+    spinButtonGroup->addButton(pmSideButton, 3);
+    connect(spinButtonGroup, QOverload<QAbstractButton*, bool>::of(&QButtonGroup::buttonToggled), this, [=](QAbstractButton* button, bool isToggled) {
+        if (isToggled)
+        {
+            _spinBox->setButtonMode((ElaSpinBoxType::ButtonMode)spinButtonGroup->id(button));
+        }
+    });
+
     _slider = new ElaSlider(this);
     ElaScrollPageArea* sliderArea = new ElaScrollPageArea(this);
     QHBoxLayout* sliderLayout = new QHBoxLayout(sliderArea);
@@ -211,6 +243,31 @@ T_BaseComponents::T_BaseComponents(QWidget* parent)
     progressBarLayout->addWidget(_progressBar);
     progressBarLayout->addStretch();
 
+    _progressRing = new ElaProgressRing(this);
+    _progressRing->setValue(30);
+    _progressPercentRing = new ElaProgressRing(this);
+    _progressPercentRing->setValue(50);
+    _progressPercentRing->setValueDisplayMode(ElaProgressRingType::ValueDisplayMode::Percent);
+    _progressBusyRing = new ElaProgressRing(this);
+    _progressBusyRing->setIsBusying(true);
+    _progressBusyTransparentRing = new ElaProgressRing(this);
+    _progressBusyTransparentRing->setIsBusying(true);
+    _progressBusyTransparentRing->setIsTransparent(true);
+    ElaScrollPageArea* progressRingArea = new ElaScrollPageArea(this);
+    progressRingArea->setFixedHeight(90);
+    QHBoxLayout* progressRingLayout = new QHBoxLayout(progressRingArea);
+    ElaText* progressRingText = new ElaText("ElaProgressRing", this);
+    progressRingText->setTextPixelSize(15);
+    progressRingLayout->addWidget(progressRingText);
+    progressRingLayout->addWidget(_progressRing);
+    progressRingLayout->addSpacing(10);
+    progressRingLayout->addWidget(_progressPercentRing);
+    progressRingLayout->addSpacing(10);
+    progressRingLayout->addWidget(_progressBusyRing);
+    progressRingLayout->addSpacing(10);
+    progressRingLayout->addWidget(_progressBusyTransparentRing);
+    progressRingLayout->addStretch();
+
     ElaPlainTextEdit* edit = new ElaPlainTextEdit(this);
     edit->setPlainText("这是一个ElaPlainTextEdit  暂时放在这里");
 
@@ -227,6 +284,7 @@ T_BaseComponents::T_BaseComponents(QWidget* parent)
     centerLayout->addWidget(sliderArea);
     centerLayout->addWidget(radioButtonArea);
     centerLayout->addWidget(progressBarArea);
+    centerLayout->addWidget(progressRingArea);
     centerLayout->addWidget(edit);
     centerLayout->addStretch();
     centerLayout->setContentsMargins(0, 0, 0, 0);

@@ -13,6 +13,7 @@
 #include "ElaTheme.h"
 #include "ElaToggleSwitch.h"
 #include "ElaWindow.h"
+#include <QButtonGroup>
 T_Setting::T_Setting(QWidget* parent)
     : T_BasePage(parent)
 {
@@ -62,18 +63,53 @@ T_Setting::T_Setting(QWidget* parent)
     helperText->setWordWrap(false);
     helperText->setTextPixelSize(18);
 
-    _micaSwitchButton = new ElaToggleSwitch(this);
+    _normalButton = new ElaRadioButton("Normal", this);
+    _elaMicaButton = new ElaRadioButton("ElaMica", this);
+#ifdef Q_OS_WIN
+    _micaButton = new ElaRadioButton("Mica", this);
+    _micaAltButton = new ElaRadioButton("Mica-Alt", this);
+    _acrylicButton = new ElaRadioButton("Acrylic", this);
+    _dwmBlurnormalButton = new ElaRadioButton("Dwm-Blur", this);
+#endif
+    _normalButton->setChecked(true);
+    QButtonGroup* displayButtonGroup = new QButtonGroup(this);
+    displayButtonGroup->addButton(_normalButton, 0);
+    displayButtonGroup->addButton(_elaMicaButton, 1);
+#ifdef Q_OS_WIN
+    displayButtonGroup->addButton(_micaButton, 2);
+    displayButtonGroup->addButton(_micaAltButton, 3);
+    displayButtonGroup->addButton(_acrylicButton, 4);
+    displayButtonGroup->addButton(_dwmBlurnormalButton, 5);
+#endif
+    connect(displayButtonGroup, QOverload<QAbstractButton*, bool>::of(&QButtonGroup::buttonToggled), this, [=](QAbstractButton* button, bool isToggled) {
+        if (isToggled)
+        {
+            eApp->setWindowDisplayMode((ElaApplicationType::WindowDisplayMode)displayButtonGroup->id(button));
+        }
+    });
+    connect(eApp, &ElaApplication::pWindowDisplayModeChanged, this, [=]() {
+        auto button = displayButtonGroup->button(eApp->getWindowDisplayMode());
+        ElaRadioButton* elaRadioButton = dynamic_cast<ElaRadioButton*>(button);
+        if (elaRadioButton)
+        {
+            elaRadioButton->setChecked(true);
+        }
+    });
     ElaScrollPageArea* micaSwitchArea = new ElaScrollPageArea(this);
     QHBoxLayout* micaSwitchLayout = new QHBoxLayout(micaSwitchArea);
-    ElaText* micaSwitchText = new ElaText("启用云母效果(跨平台)", this);
+    ElaText* micaSwitchText = new ElaText("窗口效果", this);
     micaSwitchText->setWordWrap(false);
     micaSwitchText->setTextPixelSize(15);
     micaSwitchLayout->addWidget(micaSwitchText);
     micaSwitchLayout->addStretch();
-    micaSwitchLayout->addWidget(_micaSwitchButton);
-    connect(_micaSwitchButton, &ElaToggleSwitch::toggled, this, [=](bool checked) {
-        eApp->setIsEnableMica(checked);
-    });
+    micaSwitchLayout->addWidget(_normalButton);
+    micaSwitchLayout->addWidget(_elaMicaButton);
+#ifdef Q_OS_WIN
+    micaSwitchLayout->addWidget(_micaButton);
+    micaSwitchLayout->addWidget(_micaAltButton);
+    micaSwitchLayout->addWidget(_acrylicButton);
+    micaSwitchLayout->addWidget(_dwmBlurnormalButton);
+#endif
 
     _logSwitchButton = new ElaToggleSwitch(this);
     ElaScrollPageArea* logSwitchArea = new ElaScrollPageArea(this);
@@ -112,28 +148,56 @@ T_Setting::T_Setting(QWidget* parent)
     displayModeLayout->addWidget(_compactButton);
     displayModeLayout->addWidget(_maximumButton);
     displayModeLayout->addWidget(_autoButton);
-    connect(_minimumButton, &ElaRadioButton::toggled, this, [=](bool checked) {
-        if (checked)
+
+    QButtonGroup* navigationGroup = new QButtonGroup(this);
+    navigationGroup->addButton(_autoButton, 0);
+    navigationGroup->addButton(_minimumButton, 1);
+    navigationGroup->addButton(_compactButton, 2);
+    navigationGroup->addButton(_maximumButton, 3);
+    connect(navigationGroup, QOverload<QAbstractButton*, bool>::of(&QButtonGroup::buttonToggled), this, [=](QAbstractButton* button, bool isToggled) {
+        if (isToggled)
         {
-            window->setNavigationBarDisplayMode(ElaNavigationType::Minimal);
+            window->setNavigationBarDisplayMode((ElaNavigationType::NavigationDisplayMode)navigationGroup->id(button));
         }
     });
-    connect(_compactButton, &ElaRadioButton::toggled, this, [=](bool checked) {
-        if (checked)
+
+    _noneButton = new ElaRadioButton("None", this);
+    _popupButton = new ElaRadioButton("Popup", this);
+    _popupButton->setChecked(true);
+    _scaleButton = new ElaRadioButton("Scale", this);
+    _flipButton = new ElaRadioButton("Flip", this);
+    _blurButton = new ElaRadioButton("Blur", this);
+    ElaScrollPageArea* stackSwitchModeArea = new ElaScrollPageArea(this);
+    QHBoxLayout* stackSwitchModeLayout = new QHBoxLayout(stackSwitchModeArea);
+    ElaText* stackSwitchModeText = new ElaText("堆栈切换模式选择", this);
+    stackSwitchModeText->setWordWrap(false);
+    stackSwitchModeText->setTextPixelSize(15);
+    stackSwitchModeLayout->addWidget(stackSwitchModeText);
+    stackSwitchModeLayout->addStretch();
+    stackSwitchModeLayout->addWidget(_noneButton);
+    stackSwitchModeLayout->addWidget(_popupButton);
+    stackSwitchModeLayout->addWidget(_scaleButton);
+    stackSwitchModeLayout->addWidget(_flipButton);
+    stackSwitchModeLayout->addWidget(_blurButton);
+
+    QButtonGroup* stackSwitchGroup = new QButtonGroup(this);
+    stackSwitchGroup->addButton(_noneButton, 0);
+    stackSwitchGroup->addButton(_popupButton, 1);
+    stackSwitchGroup->addButton(_scaleButton, 2);
+    stackSwitchGroup->addButton(_flipButton, 3);
+    stackSwitchGroup->addButton(_blurButton, 4);
+    connect(stackSwitchGroup, QOverload<QAbstractButton*, bool>::of(&QButtonGroup::buttonToggled), this, [=](QAbstractButton* button, bool isToggled) {
+        if (isToggled)
         {
-            window->setNavigationBarDisplayMode(ElaNavigationType::Compact);
+            window->setStackSwitchMode((ElaWindowType::StackSwitchMode)stackSwitchGroup->id(button));
         }
     });
-    connect(_maximumButton, &ElaRadioButton::toggled, this, [=](bool checked) {
-        if (checked)
+    connect(window, &ElaWindow::pStackSwitchModeChanged, this, [=]() {
+        auto button = stackSwitchGroup->button(window->getStackSwitchMode());
+        ElaRadioButton* elaRadioButton = dynamic_cast<ElaRadioButton*>(button);
+        if (elaRadioButton)
         {
-            window->setNavigationBarDisplayMode(ElaNavigationType::Maximal);
-        }
-    });
-    connect(_autoButton, &ElaRadioButton::toggled, this, [=](bool checked) {
-        if (checked)
-        {
-            window->setNavigationBarDisplayMode(ElaNavigationType::Auto);
+            elaRadioButton->setChecked(true);
         }
     });
 
@@ -150,6 +214,7 @@ T_Setting::T_Setting(QWidget* parent)
     centerLayout->addWidget(logSwitchArea);
     centerLayout->addWidget(micaSwitchArea);
     centerLayout->addWidget(displayModeArea);
+    centerLayout->addWidget(stackSwitchModeArea);
     centerLayout->addStretch();
     centerLayout->setContentsMargins(0, 0, 0, 0);
     addCentralWidget(centralWidget, true, true, 0);
